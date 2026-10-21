@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const timetableController_1 = require("../controllers/timetableController");
+const authMiddleware_1 = require("../middleware/authMiddleware");
+const router = (0, express_1.Router)();
+router.post('/generate', authMiddleware_1.authenticateToken, timetableController_1.generateTimetable);
+router.get('/', authMiddleware_1.authenticateToken, timetableController_1.getTimetable);
+router.post('/:id/complete', authMiddleware_1.authenticateToken, timetableController_1.markSessionComplete);
+router.post('/:id/miss', authMiddleware_1.authenticateToken, timetableController_1.markSessionMissed);
+exports.default = router;

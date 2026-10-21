@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(uuid())
+  name          String
+  email         String          @unique
+  password_hash String
+  created_at    DateTime        @default(now())
+
+  profile       StudentProfile?
+  syllabi       Syllabus[]
+  exams         Exam[]
+  studySessions StudySession[]
+  progress      Progress[]
+  notifications Notification[]
+}
+
+model StudentProfile {
+  id                String   @id @default(uuid())
+  user_id           String   @unique
+  qualification     String
+  course            String
+  institution       String?
+  daily_study_hours Float    @default(3.0)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  user              User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model Syllabus {
+  id           String    @id @default(uuid())
+  user_id      String
+  file_name    String
+  file_path    String
+  subject_name String?   // Inferred or user-specified subject title
+  status       String    @default("PROCESSED") // PENDING, PROCESSING, PROCESSED, FAILED
+  upload_date  DateTime  @default(now())
+
+  user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  subjects     Subject[]
+}
+
+model Subject {
+  id          String   @id @default(uuid())
+  syllabus_id String
+  name        String
+
+  syllabus    Syllabus @relation(fields: [syllabus_id], references: [id], onDelete: Cascade)
+  modules     Module[]
+  exams       Exam[]
+}
+
+model Module {
+  id         String   @id @default(uuid())
+  subject_id String
+  name       String
+
+  subject    Subject  @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  topics     Topic[]
+}
+
+model Topic {
+  id         String   @id @default(uuid())
+  module_id  String
+  name       String
+  status     String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+
+  module     Module   @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  sessions   StudySession[]
+  progress   Progress[]
+}
+
+model Exam {
+  id         String   @id @default(uuid())
+  user_id    String
+  subject_id String
+  exam_date  DateTime
+  created_at DateTime @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  subject    Subject  @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+}
+
+model StudySession {
+  id                   String        @id @default(uuid())
+  user_id              String
+  topic_id             String
+  date                 DateTime
+  start_time           String        // e.g. "16:00"
+  end_time             String        // e.g. "17:00"
+  mode                 String        @default("REGULAR") // REGULAR, EXAM_PREP
+  status               String        @default("PENDING") // PENDING, COMPLETED, MISSED, RESCHEDULED
+  original_session_id  String?
+  rescheduled_from_id  String?
+  created_at           DateTime      @default(now())
+
+  user                 User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  topic                Topic         @relation(fields: [topic_id], references: [id], onDelete: Cascade)
+
+  // Self references for rescheduling history tracking
+  originalSession      StudySession?  @relation("RescheduledHistory", fields: [original_session_id], references: [id])
+  rescheduledSessions  StudySession[] @relation("RescheduledHistory")
+}
+
+model Progress {
+  id           String    @id @default(uuid())
+  user_id      String
+  topic_id     String
+  status       String    // PENDING, IN_PROGRESS, COMPLETED
+  completed_at DateTime?
+
+  user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  topic        Topic     @relation(fields: [topic_id], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  user_id    String
+  title      String
+  message    String
+  type       String   @default("INFO") // INFO, REMINDER, MISSED, EXAM
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
